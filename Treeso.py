@@ -83,8 +83,11 @@ class ItemColor(RecycleDataViewBehavior, MDBoxLayout):
         self.selected = is_selected
         if is_selected:
             print("selection changed to {0}".format(rv.data[index]))
+            print(rv.data[index], 'index', rv.data[index]['title'], 'title')
+            Picker.change_primary_palette(palette=rv.data[index]['tab_color'],hue=rv.data[index]['title'])
         else:
             print("selection removed for {0}".format(rv.data[index]))
+        
 
 
 class MD3Card(MDCard):
@@ -100,13 +103,27 @@ class AccountScreen(MDScreen):
     pass
 
 class TreeScreen(MDScreen):
+    name = StringProperty()
     def load_tree(self, index, trees):
         self.index = index
         self.trees = trees
         print('index: ', index)
-        #self.ids.text.text = trees['tree_list'][index]['text']  
-    pass
-
+        trees = unpickle_trees()
+        tree=trees['tree_list'][index]
+        print(tree)
+    
+    def del_tree(self):
+        print('del tree')
+        trees = unpickle_trees()
+        tree_list = trees['tree_list']
+        tree_list.remove(tree_list[self.index])
+        trees['tree_list'] = tree_list
+        pickle_tree(trees)
+        self.manager.current = 'home'
+    
+    def edit_tree(self):
+        print('edit tree')
+        
 class HomeScreen(MDScreen):
     def on_enter(self):
         self.add_widget(MDFloatingActionButtonSpeedDial(
@@ -206,11 +223,62 @@ class HomeScreen(MDScreen):
 
 class Picker(MDScreen):
     title = "Colors definitions"
+    
     def build(self):        
         return self.screen
     
+    def home(self):
+        self.manager.current = 'home'
+        
+    def change_primary_palette(palette, hue):
+        print(palette, hue)
+        app = MDApp.get_running_app()
+        app.theme_cls.primary_palette = palette
+        app.theme_cls.primary_light_hue = hue
+        app.theme_cls.primary_dark_hue = hue
+        settings = unpickle_settings()
+        settings['primary_palette'] = palette
+        settings['primary_hue'] = hue
+        print('hue', hue)
+        pickle_settings(settings)
+
+    def on_switch_active(self, switch, value):
+        settings = unpickle_settings()
+        if value:
+            print('The checkbox', switch, 'is active')
+            app = MDApp.get_running_app()
+            app.theme_cls.theme_style = "Dark"
+            self.theme_style = "Dark"
+            settings['theme_style'] = "Dark"
+        else:
+            app = MDApp.get_running_app()
+            app.theme_cls.theme_style = "Light"
+            self.theme_style = "Light"
+            settings['theme_style'] = "Light"
+            print('The checkbox', switch, 'is inactive')
+            
+            
+        pickle_settings(settings)
     def on_enter(self):
         Factory.register(self, cls=self)
+
+        #get user color settings 
+        settings = unpickle_settings()
+
+        if 'primary_palette' in settings:
+            self.primary_palette = settings['primary_palette']
+        else:
+            primary_palette = "Orange"
+        if 'theme_style' in settings:
+            self.theme_style = settings['theme_style']
+            
+        else:
+            self.theme_style = "Dark"
+        if 'primary_hue' in settings:
+            self.primary_hue = settings['primary_hue']
+        else:
+            self.primary_hue = "500"
+        
 
         for name_tab in colors.keys():
             tab = Tab(title=name_tab)
@@ -233,6 +301,7 @@ class Picker(MDScreen):
             self.ids.rv.data.append(
                 {
                     "viewclass": "ItemColor",
+                    "tab_color": tab_text,
                     "md_bg_color": colors[tab_text][value_color],
                     "title": value_color,
                     #"on_touch_down": self.on_touch_down()
@@ -247,10 +316,33 @@ class Treeso(MDApp):
         sm.add_widget(TreeScreen(name='tree'))
         sm.add_widget(AccountScreen(name='account'))
         sm.add_widget(Picker(name='picker'))
-        self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "Orange"
+
+        settings = unpickle_settings()
+        #settings['primary_palette'] = "Orange"
+
+        #get user color settings
+        if 'primary_palette' in settings:
+            self.theme_cls.primary_palette = settings['primary_palette']            
+        else: 
+            self.theme_cls.primary_palette = "Orange"            
+        if 'primary_hue' in settings:
+            print('adding hue', settings['primary_hue'])
+            self.theme_cls.primary_light_hue = settings['primary_hue']
+            self.theme_cls.primary_dark_hue = settings['primary_hue']
+        else:
+            self.theme_cls.primary_hue = "500"
+        
+        if 'theme_style' in settings:
+            self.theme_cls.theme_style = settings['theme_style']
+        else:
+            self.theme_cls.theme_style = "Dark"
+        
+        
         
         return sm
+    
+    def home(self):
+        self.root.current = 'home'
     
     def account_pressed(self):
         self.root.current = 'account'

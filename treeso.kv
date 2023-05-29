@@ -59,11 +59,11 @@
             
             md_bg_color: "#232217"
             icon_color: "#8A8D79"
-            left_action_items: [["arrow-left", lambda x: app.callback()],]
+            left_action_items: [["arrow-left", lambda x: app.home()],]
             right_action_items:
 
-                [["account", lambda x: app.account_pressed()],
-                ["share-variant", lambda x: app.callback()],
+                [["delete", lambda x: root.del_tree()],
+                ["pencil", lambda x: root.edit_tree()],
                 ["dots-vertical", lambda x: app.callback()],               
                 ]   
                 
@@ -86,7 +86,7 @@
             
             md_bg_color: "#232217"
             icon_color: "#8A8D79"
-            left_action_items: [["arrow-left", lambda x: app.callback()],]
+            left_action_items: [["arrow-left", lambda x: app.home()],]
             title: "Account"
                 
         MDList:
@@ -108,10 +108,7 @@
                 text: "Theme Color"
                 secondary_text: "Orange"
                 on_press: app.choose_color()
-            TwoLineListItem:
-                text: "Light/Dark Mode"
-                secondary_text: "Dark"
-                on_press: app.callback()
+            
         Widget:
 
 <Picker>:
@@ -120,9 +117,23 @@
 
     MDBoxLayout:
         orientation: 'vertical'
+
         
         MDTopAppBar:
             title: "Choose Color"
+            left_action_items: [["arrow-left", lambda x: app.home()],]
+            MDBoxLayout:
+                orientation: 'horizontal'
+                pos_hint: {'center_x': .8, 'center_y': .5}
+                size_hint_x: .3
+                MDLabel:
+                    id: text
+                    text: "Light/Dark"
+                    
+                MDSwitch:
+                    id: switch
+                    pos_hint: {'center_x': .5, 'center_y': .5}
+                    on_active: root.on_switch_active(*args)
 
         MDTabs:
             id: android_tabs
