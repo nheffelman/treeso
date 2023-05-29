@@ -1,0 +1,160 @@
+
+
+<MD3Card>
+    padding: 4
+    size_hint: None, None
+    size: "200dp", "100dp"
+
+    MDRelativeLayout:
+
+        MDIconButton:
+            icon: "assets/treeso.jpg"
+            pos_hint: {"top": .5, "right": 1}
+
+        MDLabel:
+            id: label
+            text: root.text
+            adaptive_size: True
+            theme_text_color: "Custom"
+            text_color: "black"
+            pos: "12dp", "12dp"
+            bold: True
+            
+
+<HomeScreen>:
+    name: 'home'
+    
+    MDBoxLayout:
+        orientation: 'vertical'
+        spacing: "56dp"
+
+        MDTopAppBar:
+            md_bg_color: "#232217"
+            icon_color: "#8A8D79"
+            right_action_items:
+
+                [["account", lambda x: app.account_pressed()],
+                ["share-variant", lambda x: app.callback()],
+                ["dots-vertical", lambda x: app.callback()],               
+                ]   
+
+        MDBoxLayout:
+            id: box
+            orientation: 'vertical'
+            adaptive_size: True
+            spacing: "56dp"
+            pos_hint: {"center_x": .5, "center_y": .5}
+
+        Widget:
+
+<TreeScreen>:
+    name: 'tree'
+
+    
+    MDBoxLayout:
+        id: box
+        orientation: 'vertical'
+            
+        MDTopAppBar:
+            
+            md_bg_color: "#232217"
+            icon_color: "#8A8D79"
+            left_action_items: [["arrow-left", lambda x: app.callback()],]
+            right_action_items:
+
+                [["account", lambda x: app.account_pressed()],
+                ["share-variant", lambda x: app.callback()],
+                ["dots-vertical", lambda x: app.callback()],               
+                ]   
+                
+                
+        MDLabel:
+            id: text
+            halign: "center"
+            text: "Tree"
+
+        Widget:
+        
+<AccountScreen>:
+    name: 'account'
+    
+    MDBoxLayout:
+        id: box
+        orientation: 'vertical'
+            
+        MDTopAppBar:
+            
+            md_bg_color: "#232217"
+            icon_color: "#8A8D79"
+            left_action_items: [["arrow-left", lambda x: app.callback()],]
+            title: "Account"
+                
+        MDList:
+            TwoLineListItem:
+                text: "Name"
+                secondary_text: "Jim"
+                on_press: app.callback()
+            TwoLineListItem:
+                text: "Email"
+                secondary_text: 'jim@gmail.com'
+                on_press: app.callback()
+
+        MDSeparator:
+            height: "2dp"
+
+        MDList:
+            title: "Preferences"
+            TwoLineListItem:
+                text: "Theme Color"
+                secondary_text: "Orange"
+                on_press: app.choose_color()
+            TwoLineListItem:
+                text: "Light/Dark Mode"
+                secondary_text: "Dark"
+                on_press: app.callback()
+        Widget:
+
+<Picker>:
+    name: 'picker'
+    orientation: 'vertical'
+
+    MDBoxLayout:
+        orientation: 'vertical'
+        
+        MDTopAppBar:
+            title: "Choose Color"
+
+        MDTabs:
+            id: android_tabs
+            on_tab_switch: root.on_tab_switch(*args)
+            size_hint_y: None
+            height: "48dp"
+            tab_indicator_anim: False
+
+        RecycleView:
+            id: rv
+            #key_viewclass: "viewclass"
+            #key_size: "height"
+            viewclass: "ItemColor"
+
+            SelectableRecycleBoxLayout:
+                default_size: None, dp(48)
+                default_size_hint: 1, None
+                size_hint_y: None
+                height: self.minimum_height
+                orientation: "vertical"
+                multiselect: True
+                touch_multiselect: True
+
+<ItemColor>
+    size_hint_y: None
+    height: "42dp"
+
+    MDLabel:
+        text: root.text
+        halign: "center"
+<Tab>
+
+
+    
+    
