@@ -12,13 +12,15 @@ from kivy.properties import ListProperty, StringProperty, BooleanProperty
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.color_definitions import colors
 from kivymd.uix.tab import MDTabsBase
-from kivy.uix.behaviors import FocusBehavior
+from kivy.uix.behaviors import ButtonBehavior, FocusBehavior
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
-from kivy.uix.label import Label
+from kivymd.uix.label import MDLabel
 from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
+from kivymd.uix.textfield import MDTextField
+from kivy.uix.widget import Widget
 
 #pickles the current settings
 def pickle_settings(settings):
@@ -94,6 +96,9 @@ class MD3Card(MDCard):
     '''Implements a material design v3 card.'''
     text = StringProperty()
 
+class NameLabel(ButtonBehavior, MDLabel):
+    pass
+
 class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
                                  RecycleBoxLayout):
     ''' Adds selection and focus behaviour to the view. '''
@@ -103,7 +108,8 @@ class AccountScreen(MDScreen):
     pass
 
 class TreeScreen(MDScreen):
-    name = StringProperty()
+    text = StringProperty()
+
     def load_tree(self, index, trees):
         self.index = index
         self.trees = trees
@@ -111,7 +117,52 @@ class TreeScreen(MDScreen):
         trees = unpickle_trees()
         tree=trees['tree_list'][index]
         print(tree)
-    
+        self.text = tree['text']
+
+    def edit_text(self, text):
+        print('edit text')
+        self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit()]]
+        
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        textinput = MDTextField(id='textinput',multiline=True, halign='center', text=self.text)
+        self.ids.box.add_widget(textinput)
+        widget = Widget()
+        self.ids.box.add_widget(widget)
+        self.ids.topbar.right_action_items = [['check', lambda x, textinput=textinput : self.save_text(textinput)]]
+
+    def cancel_edit(self):
+        self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
+        self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
+                                              ['dots-vertical']]
+        namelabel = NameLabel(text=self.text, valign='top', halign='center', 
+                              on_press=lambda x: self.edit_text(self.text))
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.add_widget(namelabel)
+        widget = Widget()
+        self.ids.box.add_widget(widget)
+    def home(self):
+        self.manager.current = 'home'
+    def save_text(self, textinput):
+        trees = unpickle_trees()
+        if 'tree_list' in trees:
+            tree_list = trees['tree_list']
+            tree_list[self.index]['text'] = textinput.text
+            trees['tree_list'] = tree_list
+            pickle_tree(trees)
+        self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
+        self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
+                                              ['dots-vertical']]
+        namelabel = NameLabel(text=textinput.text, valign='top', halign='center', 
+                              on_press=lambda x: self.edit_text(self.text))
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.add_widget(namelabel)
+        widget = Widget()
+        self.ids.box.add_widget(widget)
+
+
     def del_tree(self):
         print('del tree')
         trees = unpickle_trees()
@@ -121,8 +172,7 @@ class TreeScreen(MDScreen):
         pickle_tree(trees)
         self.manager.current = 'home'
     
-    def edit_tree(self):
-        print('edit tree')
+    
         
 class HomeScreen(MDScreen):
     def on_enter(self):

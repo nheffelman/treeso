@@ -56,24 +56,26 @@
         orientation: 'vertical'
             
         MDTopAppBar:
-            
+            id: topbar
             md_bg_color: "#232217"
             icon_color: "#8A8D79"
             left_action_items: [["arrow-left", lambda x: app.home()],]
             right_action_items:
 
                 [["delete", lambda x: root.del_tree()],
-                ["pencil", lambda x: root.edit_tree()],
                 ["dots-vertical", lambda x: app.callback()],               
                 ]   
                 
                 
-        MDLabel:
+        NameLabel:
             id: text
             halign: "center"
-            text: "Tree"
+            valign: 'top'
+            text: root.text
+            on_press: root.edit_text(root.text)
 
         Widget:
+            id: widget
         
 <AccountScreen>:
     name: 'account'
@@ -166,6 +168,6 @@
         halign: "center"
 <Tab>
 
-
+<NameLabel@ButtonBehavior+MDLabel>
     
     
