@@ -13,10 +13,8 @@
 
         MDLabel:
             id: label
-            text: root.text
+            text: root.body
             adaptive_size: True
-            theme_text_color: "Custom"
-            text_color: "black"
             pos: "12dp", "12dp"
             bold: True
             
@@ -29,14 +27,14 @@
         spacing: "56dp"
 
         MDTopAppBar:
-            md_bg_color: "#232217"
-            icon_color: "#8A8D79"
             right_action_items:
 
                 [["account", lambda x: app.account_pressed()],
-                ["share-variant", lambda x: app.callback()],
-                ["dots-vertical", lambda x: app.callback()],               
-                ]   
+                ["share-variant", lambda x: print("share")],          
+                
+                ["dots-vertical", lambda x: print("dots")],               
+                ]
+                  
 
         MDBoxLayout:
             id: box
@@ -57,8 +55,6 @@
             
         MDTopAppBar:
             id: topbar
-            md_bg_color: "#232217"
-            icon_color: "#8A8D79"
             left_action_items: [["arrow-left", lambda x: app.home()],]
             right_action_items:
 
@@ -68,11 +64,11 @@
                 
                 
         NameLabel:
-            id: text
+            id: body
             halign: "center"
             valign: 'top'
-            text: root.text
-            on_press: root.edit_text(root.text)
+            text: root.body
+            on_press: root.edit_body(root.body)
 
         Widget:
             id: widget
@@ -85,21 +81,18 @@
         orientation: 'vertical'
             
         MDTopAppBar:
-            
-            md_bg_color: "#232217"
-            icon_color: "#8A8D79"
             left_action_items: [["arrow-left", lambda x: app.home()],]
             title: "Account"
                 
         MDList:
             TwoLineListItem:
                 text: "Name"
-                secondary_text: "Jim"
-                on_press: app.callback()
+                secondary_body: "Jim"
+                on_press: print("name")
             TwoLineListItem:
                 text: "Email"
-                secondary_text: 'jim@gmail.com'
-                on_press: app.callback()
+                secondary_body: 'jim@gmail.com'
+                on_press: print("email")
 
         MDSeparator:
             height: "2dp"
@@ -108,7 +101,7 @@
             title: "Preferences"
             TwoLineListItem:
                 text: "Theme Color"
-                secondary_text: "Orange"
+                secondary_body: "Orange"
                 on_press: app.choose_color()
             
         Widget:
@@ -129,7 +122,7 @@
                 pos_hint: {'center_x': .8, 'center_y': .5}
                 size_hint_x: .3
                 MDLabel:
-                    id: text
+                    id: body
                     text: "Light/Dark"
                     
                 MDSwitch:
@@ -164,7 +157,7 @@
     height: "42dp"
 
     MDLabel:
-        text: root.text
+        text: root.body
         halign: "center"
 <Tab>
 

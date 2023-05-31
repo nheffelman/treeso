@@ -60,7 +60,7 @@ class Tab(MDBoxLayout, MDTabsBase):
 
 
 class ItemColor(RecycleDataViewBehavior, MDBoxLayout):
-    text = StringProperty()
+    body = StringProperty()
     color = ListProperty()
     ''' Add selection support to the Label '''
     index = None
@@ -94,7 +94,7 @@ class ItemColor(RecycleDataViewBehavior, MDBoxLayout):
 
 class MD3Card(MDCard):
     '''Implements a material design v3 card.'''
-    text = StringProperty()
+    body = StringProperty()
 
 class NameLabel(ButtonBehavior, MDLabel):
     pass
@@ -108,7 +108,28 @@ class AccountScreen(MDScreen):
     pass
 
 class TreeScreen(MDScreen):
-    text = StringProperty()
+    body = StringProperty()
+
+    def on_enter(self):
+        self.add_widget(MDFloatingActionButtonSpeedDial(
+            data={
+                'body': [
+                    'body',
+                    "on_release", lambda x: self.add_body()
+                ],
+                'Link': ['link', 
+                          "on_press",lambda x: self.add_link_url()],
+                'Video': [
+                    'video', 
+                    "on_press", lambda x: print('video pressed')
+                ],
+                'Tree': [
+                    'assets/treeso.jpg',
+                    "on_press", lambda x: self.add_tree_pressed()
+                ]
+            },
+            root_button_anim=True,
+        ))
 
     def load_tree(self, index, trees):
         self.index = index
@@ -117,26 +138,26 @@ class TreeScreen(MDScreen):
         trees = unpickle_trees()
         tree=trees['tree_list'][index]
         print(tree)
-        self.text = tree['text']
+        self.body = tree['PostFound']['body']
 
-    def edit_text(self, text):
-        print('edit text')
+    def edit_body(self, body):
+        print('edit body')
         self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit()]]
         
         self.ids.box.remove_widget(self.ids.box.children[0])
         self.ids.box.remove_widget(self.ids.box.children[0])
-        textinput = MDTextField(id='textinput',multiline=True, halign='center', text=self.text)
-        self.ids.box.add_widget(textinput)
+        bodyinput = MDTextField(id='bodyinput',multiline=True, halign='center', text=self.body)
+        self.ids.box.add_widget(bodyinput)
         widget = Widget()
         self.ids.box.add_widget(widget)
-        self.ids.topbar.right_action_items = [['check', lambda x, textinput=textinput : self.save_text(textinput)]]
+        self.ids.topbar.right_action_items = [['check', lambda x, bodyinput=bodyinput : self.save_body(bodyinput)]]
 
     def cancel_edit(self):
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
                                               ['dots-vertical']]
-        namelabel = NameLabel(text=self.text, valign='top', halign='center', 
-                              on_press=lambda x: self.edit_text(self.text))
+        namelabel = NameLabel(text=self.body, valign='top', halign='center', 
+                              on_press=lambda x: self.edit_body(self.body))
         self.ids.box.remove_widget(self.ids.box.children[0])
         self.ids.box.remove_widget(self.ids.box.children[0])
         self.ids.box.add_widget(namelabel)
@@ -144,24 +165,67 @@ class TreeScreen(MDScreen):
         self.ids.box.add_widget(widget)
     def home(self):
         self.manager.current = 'home'
-    def save_text(self, textinput):
+    def save_body(self, bodyinput):
         trees = unpickle_trees()
         if 'tree_list' in trees:
             tree_list = trees['tree_list']
-            tree_list[self.index]['text'] = textinput.text
+            tree_list[self.index]['PostFound']['body'] = bodyinput.text
             trees['tree_list'] = tree_list
             pickle_tree(trees)
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
                                               ['dots-vertical']]
-        namelabel = NameLabel(text=textinput.text, valign='top', halign='center', 
-                              on_press=lambda x: self.edit_text(self.text))
+        namelabel = NameLabel(text=bodyinput.text, valign='top', halign='center', 
+                              on_press=lambda x: self.edit_body(self.body))
         self.ids.box.remove_widget(self.ids.box.children[0])
         self.ids.box.remove_widget(self.ids.box.children[0])
         self.ids.box.add_widget(namelabel)
         widget = Widget()
         self.ids.box.add_widget(widget)
 
+    #function adds more body to the tree
+    def add_body(self):
+        pass
+
+    def add_link_url(self):
+        print('edit body')
+        self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit()]]
+        
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        bodyinput = MDTextField(id='bodyinput', halign='center', text=self.body)
+        self.ids.box.add_widget(bodyinput)
+        widget = Widget()
+        self.ids.box.add_widget(widget)
+        self.ids.topbar.right_action_items = [['check', lambda x, bodyinput=bodyinput : self.save_link(bodyinput)]]
+
+    def save_link(self, bodyinput):
+        trees = unpickle_trees()
+        if 'tree_list' in trees:
+            tree_list = trees['tree_list']
+            if 'links' in tree_list[self.index]['PostFound']:
+                tree = tree_list[self.index]
+                tree['PostFound']['links'].append(bodyinput.text)
+                tree_list[self.index] = tree
+            else:
+                tree = tree_list[self.index]
+                tree['PostFound']['links'] = [bodyinput.text]
+                tree_list[self.index] = tree
+            trees['tree_list'] = tree_list
+            pickle_tree(trees)
+            self.reload()
+
+    def reload(self):
+        self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
+        self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
+                                              ['dots-vertical']]
+        namelabel = NameLabel(text=self.body, valign='top', halign='center', 
+                              on_press=lambda x: self.edit_body(self.body))
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.add_widget(namelabel)
+        widget = Widget()
+        self.ids.box.add_widget(widget)
 
     def del_tree(self):
         print('del tree')
@@ -171,6 +235,20 @@ class TreeScreen(MDScreen):
         trees['tree_list'] = tree_list
         pickle_tree(trees)
         self.manager.current = 'home'
+
+    def add_tree_pressed(self):
+        toast('tree pressed')
+        """trees = unpickle_trees()
+        if 'tree_list' in trees:
+            tree_list = trees['tree_list']
+        else:
+            tree_list = []
+        new_tree = {'PostFound': {'body': 'new tree'}}
+        tree_list.append(new_tree)
+        trees['tree_list'] = tree_list
+        print(trees)
+        pickle_tree(trees)
+        self.list_trees()"""
     
     
         
@@ -178,16 +256,16 @@ class HomeScreen(MDScreen):
     def on_enter(self):
         self.add_widget(MDFloatingActionButtonSpeedDial(
             data={
-                'Text': [
-                    'text',
-                    "on_press", lambda x: toast("pressed text"),
+                'body': [
+                    'body',
+                    "on_press", lambda x: toast("pressed body"),
                     "on_release", lambda x: print(
                         "stack_buttons")
                 ],
                 'Image': 'image',
                 'Video': [
                     'video', 
-                    "on_press", lambda x: self.del_tree_pressed()
+                    "on_press", lambda x: print('video pressed')
                 ],
                 'Tree': [
                     'assets/treeso.jpg',
@@ -207,7 +285,7 @@ class HomeScreen(MDScreen):
         card = MD3Card(
                 line_color=(0.2, 0.2, 0.2, 0.8),
                 style=style_list[index],
-                md_bg_color=styles[style_list[index]],
+                #md_bg_color=styles[style_list[index]],
                 shadow_offset=(0, -1),
             )
         return card
@@ -236,7 +314,7 @@ class HomeScreen(MDScreen):
                 index += 1
                 if index > 2:
                     index = 0   
-                card.text = tree['text']
+                card.body = tree['PostFound']['body']
                 card.bind(on_press = lambda widget, trees_index=trees_index, trees=trees: self.edit_tree(trees_index, trees))
                 trees_index += 1
                 print(card)
@@ -250,19 +328,11 @@ class HomeScreen(MDScreen):
             tree_list = trees['tree_list']
         else:
             tree_list = []
-        new_tree = {'text': 'new tree'}
+        new_tree = {'PostFound': {'body': 'new tree'}}
         tree_list.append(new_tree)
         trees['tree_list'] = tree_list
         print(trees)
         pickle_tree(trees)
-        self.list_trees()
-
-    def del_tree_pressed(self):
-        trees = unpickle_trees()
-        if 'tree_list' in trees:
-            trees['tree_list'] = []
-        pickle_tree(trees)
-        self.ids.box.clear_widgets()
         self.list_trees()
 
     def edit_tree(self, index, trees):
@@ -284,8 +354,8 @@ class Picker(MDScreen):
         print(palette, hue)
         app = MDApp.get_running_app()
         app.theme_cls.primary_palette = palette
-        app.theme_cls.primary_light_hue = hue
-        app.theme_cls.primary_dark_hue = hue
+        app.theme_cls.primary_hue = hue
+        #app.theme_cls.primary_dark_hue = hue
         settings = unpickle_settings()
         settings['primary_palette'] = palette
         settings['primary_hue'] = hue
@@ -342,17 +412,17 @@ class Picker(MDScreen):
         )
         return self
     def on_tab_switch(
-        self, instance_tabs, instance_tab, instance_tabs_label, tab_text
+        self, instance_tabs, instance_tab, instance_tabs_label, tab_body
     ):
         self.ids.rv.data = []
-        if not tab_text:
-            tab_text = 'Red'
-        for value_color in colors[tab_text]:
+        if not tab_body:
+            tab_body = 'Red'
+        for value_color in colors[tab_body]:
             self.ids.rv.data.append(
                 {
                     "viewclass": "ItemColor",
-                    "tab_color": tab_text,
-                    "md_bg_color": colors[tab_text][value_color],
+                    "tab_color": tab_body,
+                    "md_bg_color": colors[tab_body][value_color],
                     "title": value_color,
                     #"on_touch_down": self.on_touch_down()
                 }
