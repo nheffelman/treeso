@@ -22,6 +22,10 @@ from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivymd.uix.textfield import MDTextField
 from kivy.uix.widget import Widget
+from linkpreview import LinkPreview, Link, LinkGrabber
+from kivymd.uix.fitimage import FitImage
+import random
+
 
 #pickles the current settings
 def pickle_settings(settings):
@@ -55,6 +59,14 @@ def unpickle_trees():
         trees = {}
         print('not here')
     return trees
+
+def get_color():
+    settings = unpickle_settings()
+    if 'primary_palette' in settings:
+        palette = settings['primary_palette']
+    else:
+        palette = "Orange"
+    return palette
 
 class Tab(MDBoxLayout, MDTabsBase):
     pass
@@ -91,7 +103,10 @@ class ItemColor(RecycleDataViewBehavior, MDBoxLayout):
         else:
             print("selection removed for {0}".format(rv.data[index]))
         
-
+class ImageCard(MDCard):
+    text = StringProperty()
+    source = StringProperty()
+    color = StringProperty()
 
 class MD3Card(MDCard):
     '''Implements a material design v3 card.'''
@@ -134,23 +149,34 @@ class TreeScreen(MDScreen):
         ))
 
     def load_tree(self, tree):
+        bgcolor = get_color()
+        print('color', bgcolor)
         self.tree = tree
         leaves =  MDBoxLayout(orientation='vertical',
             id='leaves',
             adaptive_height=True,
             spacing="56dp")
         leafIndex=0
+
         for leaf in tree['leaves']:
             
-            card = self.manager.get_screen('home').get_card(0)
+                       
             if leaf.get('kind') == 'text':
-                card.text = leaf['text']
+                card = self.manager.get_screen('home').get_card(0)
+                print('kind text', leaf['text'] )
+                card.text = leaf['text'][:18]
                 card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.edit_text(tree=tree, text=leaf['text'], leafIndex=leafIndex, add_text=False))
                 leaves.add_widget(card)
             if leaf.get('kind') == 'link':
-                card.text = '#'+leaf['link']
-                card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.edit_link(tree=tree, text=leaf['link'], leafIndex=leafIndex, add_link=False))
-                leaves.add_widget(card)
+                linkcard = ImageCard()
+                linkcard.text = leaf['link'][8:26]
+                linkcard.color = bgcolor
+                
+                if 'image_url' in leaf:
+                    linkcard.source = str(leaf['image_url']) 
+                    
+                linkcard.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.add_link_url(tree=tree, text=leaf['link'], leafIndex=leafIndex, add_link=False))
+                leaves.add_widget(linkcard)
             leafIndex += 1
         self.ids.box.add_widget(leaves)
         widget = Widget()
@@ -166,7 +192,28 @@ class TreeScreen(MDScreen):
         self.ids.box.add_widget(textinput)
         widget = Widget()
         self.ids.box.add_widget(widget)
-        self.ids.topbar.right_action_items = [['check', lambda x, textinput=textinput, tree=tree : self.save_text(tree, textinput, leafIndex, add_text)]]
+        self.ids.topbar.right_action_items = [['delete', lambda x, tree=tree, leafIndex=leafIndex: self.del_leaf(tree, leafIndex) ],
+                                              ['check', lambda x, textinput=textinput, tree=tree : self.save_text(tree, textinput, leafIndex, add_text)]]
+        
+    def del_leaf(self, tree, leafIndex):
+        trees = unpickle_trees()
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        else: 
+            print('no public key')
+            return
+        treeDict = trees[publicKey]
+        tree['leaves'].remove(tree['leaves'][leafIndex])
+        treeDict[tree['id']] = dict(tree)
+        trees[publicKey] = treeDict
+        pickle_tree(trees)
+        self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
+        self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
+                                              ['dots-vertical']]
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.load_tree(tree)
 
     def cancel_edit(self, tree):
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
@@ -184,6 +231,13 @@ class TreeScreen(MDScreen):
 
     def save_text(self, tree, textinput, leafIndex, add_text):
         trees = unpickle_trees()
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        else: 
+            print('no public key')
+            return
+        treeDict = trees[publicKey]
         if add_text:
 
             tree['leaves'].append({'kind': 'text', 'text': textinput.text})
@@ -191,11 +245,9 @@ class TreeScreen(MDScreen):
         else:
             tree['leaves'][leafIndex] = {'kind': 'text', 'text': textinput.text}  
              
-        tree_list = trees.get('tree_list')
-        id = tree.get('id')
-        print(' tree is a ',type(tree))
-        tree_list[id] = dict(tree)
-        trees['tree_list'] = tree_list
+        
+        treeDict[tree['id']] = dict(tree)
+        trees[publicKey] = treeDict
         pickle_tree(trees)
 
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
@@ -220,38 +272,56 @@ class TreeScreen(MDScreen):
         self.ids.box.add_widget(textinput)
         widget = Widget()
         self.ids.box.add_widget(widget)
-        self.ids.topbar.right_action_items = [['check', lambda x, textinput=textinput, tree=tree : self.save_text(tree, textinput, leafIndex, add_link)]]
+        self.ids.topbar.right_action_items = [['delete', lambda x, tree=tree, leafIndex=leafIndex: self.del_leaf(tree, leafIndex) ],
+                                            ['check', lambda x, textinput=textinput, tree=tree : self.save_link(tree, textinput, leafIndex, add_link)]]
 
     def save_link(self, tree, textinput, leafIndex, add_link):
         trees = unpickle_trees()
-        if add_link:
-
-            tree['leaves'].append({'kind': 'link', 'link': textinput.text})
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        else: 
+            print('no public key')
+            return
+        treeDict = trees[publicKey]
+        leaf = {}
+        leaf['link'] = textinput.text
+        leaf['kind'] = 'link'
+        
+        #get link preview
+        url = textinput.text
+        grabber = LinkGrabber(
+            initial_timeout=20,
+            maxsize=1048576,
+            receive_timeout=10,
+            chunk_size=1024,
+        )
+        content, url = grabber.get_content(url)
+        link = Link(url, content)
+        
+        try:
+            preview = LinkPreview(link)
+        except:
+            preview = None
+        if preview:
             
+            if preview.image:
+                leaf['image_url'] = preview.image
+            if preview.title:
+                leaf['title'] = preview.title            
+            if preview.description:
+                leaf['description'] = preview.description[128:]
+            
+        if add_link:
+            tree['leaves'].append(leaf)
         else:
-            tree['leaves'][leafIndex] = {'kind': 'link', 'link': textinput.text}  
+            tree['leaves'][leafIndex] = leaf
              
-        tree_list = trees.get('tree_list')
-        id = tree.get('id')
-        print(' tree is a ',type(tree))
-        tree_list[id] = dict(tree)(self, textinput)
-        trees = unpickle_trees()
-        if 'tree_list' in trees:
-            tree_list = trees['tree_list']
-            if 'links' in tree_list[self.index]:
-                tree = tree_list[self.index]
-                tree['links'].append(textinput.text)
-                tree_list[self.index] = tree
-            else:
-                tree = tree_list[self.index]
-                tree['links'] = [textinput.text]
-                tree_list[self.index] = tree
-            trees['tree_list'] = tree_list
-            pickle_tree(trees)
-            self.reload()
-        trees['tree_list'] = tree_list
+        treeDict[tree['id']] = dict(tree)
+        trees[publicKey] = treeDict
         pickle_tree(trees)
 
+            
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
                                               ['dots-vertical']]
@@ -273,47 +343,28 @@ class TreeScreen(MDScreen):
         self.ids.box.add_widget(widget)
 
     def del_tree(self):
-        print('del tree')
         trees = unpickle_trees()
-        tree_list = trees['tree_list']
-        tree_list.remove(tree_list[self.index])
-        trees['tree_list'] = tree_list
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        else: 
+            print('no public key')
+            return
+        treeDict = trees[publicKey]
+        treeDict.pop(self.tree['id'])
+        trees[publicKey] = treeDict
         pickle_tree(trees)
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
         self.manager.current = 'home'
+        
 
     def add_tree_pressed(self):
         toast('tree pressed')
-        """trees = unpickle_trees()
-        if 'tree_list' in trees:
-            tree_list = trees['tree_list']
-        else:
-            tree_list = []
-        new_tree = {'PostFound': {'text': 'new tree'}}
-        tree_list.append(new_tree)
-        trees['tree_list'] = tree_list
-        print(trees)
-        pickle_tree(trees)
-        self.list_trees()"""
-    
-    
+        
         
 class HomeScreen(MDScreen):
     def on_enter(self):
         self.add_widget(MDFloatingActionButtonSpeedDial(
             data={
-                'text': [
-                    'text',
-                    "on_press", lambda x: toast("pressed text"),
-                    "on_release", lambda x: print(
-                        "stack_buttons")
-                ],
-                'Image': 'image',
-                'Video': [
-                    'video', 
-                    "on_press", lambda x: print('video pressed')
-                ],
                 'Tree': [
                     'assets/treeso.jpg',
                     "on_press", lambda x: self.add_tree_pressed()
@@ -324,6 +375,7 @@ class HomeScreen(MDScreen):
         
         self.list_trees()
 
+            
     def get_card(self, index):
         settings=unpickle_settings()
         if 'primary_palette' in settings:
@@ -349,53 +401,58 @@ class HomeScreen(MDScreen):
     def list_trees(self):
         #unpickle settings and get user settings
         settings = unpickle_settings()
-        """user={}
-        user['username'] = 'nathan'
-        settings['users'] = [user]
-        pickle_settings(settings)"""
-        if 'users' in settings:
-            user = settings['users'][0]
-            username = user['username']
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
         print(settings)
 
         self.ids.box.clear_widgets()
         trees = unpickle_trees()
  
         print(trees)
-        if 'tree_list' in trees:
-            tree_list = trees['tree_list']
+        if publicKey in trees:
+            treeDict = trees[publicKey]
+            print('treedict:', treeDict)
             index = 0 
-            lab = MDLabel(text=str(tree_list))
-            self.ids.box.add_widget(lab)
-            for tree in tree_list:
+            lab = MDLabel(text=str(treeDict))
+            #self.ids.box.add_widget(lab)
+            for id, tree in treeDict.items():
+                print('each tree', tree)
                 card = self.get_card(index)
                 index += 1
                 if index > 2:
                     index = 0   
-                card.text = tree['leaves'][0]['text']
-                card.bind(on_press = lambda widget, tree=tree: self.edit_tree(tree))
-                print(card)
-                self.ids.box.add_widget(card)
+                if tree['leaves'] != []:
+                    card.text = tree['leaves'][0]['text']
+                    card.bind(on_press = lambda widget, tree=tree: self.edit_tree(tree))
+                    print(card)
+                    self.ids.box.add_widget(card)
        
 
     def add_tree_pressed(self):
         trees = unpickle_trees()
-        print(trees)
-        if 'tree_list' in trees:
-            tree_list = trees['tree_list']
-        else:
-            id=0
-            tree_list = []
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        if publicKey in trees:
+            print(trees)
         new_tree = {}
+        id = random.randint(0, 1000000)
+        if publicKey in trees:
+            treesDict = trees[publicKey]
+        else:
+            treesDict = {}
+            print('no trees')
         leaves = []
         leaf = {'kind': 'text', 'text': 'new tree'}
         leaves.append(leaf)
         new_tree['leaves'] = leaves
-        new_tree['id'] = len(tree_list)
-        tree_list.append(new_tree)
-        trees['tree_list'] = tree_list
-        print(trees)
+        new_tree['id'] = id
+        
+        treesDict[id] = new_tree
+        
+        trees[publicKey] = treesDict
         pickle_tree(trees)
+        
         self.list_trees()
 
     def edit_tree(self, tree):
