@@ -165,7 +165,7 @@ class TreeScreen(MDScreen):
             self.postVideo.append(path)
             video = VideoPlayer(source=path, state='pause', options={'allow_stretch': True})
             video.on_image_overlay_play = 'assets/preview.png'
-            self.ids.previewBox.add_widget(video)
+            self.ids.main.add_widget(video)
         if self.mediaType == 'image':
             self.postImage.append(path)
             img = FitImage(source=path)
@@ -213,6 +213,9 @@ class TreeScreen(MDScreen):
                 'Image': [
                     'image', 
                     "on_press", lambda x: self.add_image(self.tree, add_image=True)],
+                'Video': [
+                    'video',
+                    "on_press", lambda x: self.add_video(self.tree, add_video=True)],
                 'Tree': [
                     'assets/treeso.jpg',
                     "on_press", lambda x: self.add_tree_pressed()
@@ -258,7 +261,14 @@ class TreeScreen(MDScreen):
                 card.source = leaf['path']
                 card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.add_image(tree=tree, leafIndex=leafIndex, add_image=False))
                 leaves.add_widget(card)
+            if leaf.get('kind') == 'video':
+                card = LinkCard()
+                card.source = 'assets/preview.png'
+                card.text = os.path.basename(leaf['path'][48:])
+                card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.add_video(tree=tree, leafIndex=leafIndex, add_video=False))
+                leaves.add_widget(card)
             leafIndex += 1
+
         box.add_widget(leaves)
         widget = Widget()
         box.add_widget(widget)
@@ -406,7 +416,8 @@ class TreeScreen(MDScreen):
         
         self.ids.main.clear_widgets()
         self.load_tree(tree)
-
+        
+    #when user presses add image on fab, opens up a file chooser
     def add_image(self, tree, leafIndex=0, add_image=False):
         print('edit image')
         self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit(tree)]]
@@ -415,9 +426,11 @@ class TreeScreen(MDScreen):
         self.ids.topbar.right_action_items = [['delete', lambda x, tree=tree, leafIndex=leafIndex: self.del_leaf(tree, leafIndex) ],
                                             ['check', lambda x, tree=tree : self.save_image(tree, leafIndex, add_image )]]
         self.mediaType = "image"
+        self.file_manager.preview=True
         self.file_manager.show(os.path.expanduser("~"))  # output manager to the screen
         self.manager_open = True
 
+    #saves user choice of image from file chooser to dict tree and pickles
     def save_image(self, tree, leafIndex, add_link):
         trees = unpickle_trees()
         settings = unpickle_settings()
@@ -452,7 +465,54 @@ class TreeScreen(MDScreen):
         self.ids.main.clear_widgets()
         self.load_tree(tree)
 
-  
+    #when user presses add video on fab, opens up a file chooser
+    def add_video(self, tree, leafIndex=0, add_video=False):
+        print('edit image')
+        self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit(tree)]]
+        
+        self.ids.main.clear_widgets()
+        self.ids.topbar.right_action_items = [['delete', lambda x, tree=tree, leafIndex=leafIndex: self.del_leaf(tree, leafIndex) ],
+                                            ['check', lambda x, tree=tree : self.save_video(tree, leafIndex, add_video )]]
+        self.mediaType = "video"
+        self.file_manager.preview=False
+        self.file_manager.show(os.path.expanduser("~"))  # output manager to the screen
+        self.manager_open = True
+    
+    #saves user choice of video from file chooser to dict tree and pickles
+    def save_video(self, tree, leafIndex, add_link):
+        trees = unpickle_trees()
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        else: 
+            print('no public key')
+            return
+        treeDict = trees[publicKey]
+        leaf = {}
+        print('self.postVideo', self.postVideo)
+        if self.postVideo == []:
+            self.del_leaf(tree, leafIndex)
+            return
+        leaf['path'] = self.postVideo[0]
+        leaf['kind'] = 'video'
+        print("leaf", leaf)
+        if add_link:
+            tree['leaves'].append(leaf)
+        else:
+            tree['leaves'][leafIndex] = leaf
+             
+        treeDict[tree['id']] = dict(tree)
+        trees[publicKey] = treeDict
+        pickle_tree(trees)
+
+            
+        self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
+        self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
+                                              ['dots-vertical']]
+        
+        self.ids.main.clear_widgets()
+        self.load_tree(tree)
+    
     def reload(self):
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
