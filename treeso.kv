@@ -34,6 +34,26 @@
        
         FitImage:
             source: root.source
+            radius: [12,12, 12,12]
+            size_hint_y: 1
+            md_bg_color: app.theme_cls.primary_color
+        
+<LinkCard>    
+    
+    size_hint: None, None
+    size: "200dp", "100dp"
+    line_color: (0.2, 0.2, 0.2, 0.8)
+    style: 'elevated'
+    shadow_offset: (0, -1)
+    md_bg_color: app.theme_cls.primary_color
+
+    MDBoxLayout:
+        orientation: 'vertical'
+        size_hint_y: 1
+        radius: 12
+       
+        FitImage:
+            source: root.source
             radius: [12,12, 0, 0]
             size_hint_y: .7
             md_bg_color: app.theme_cls.primary_color
@@ -85,7 +105,6 @@
     MDBoxLayout:
         orientation: 'vertical'
         spacing: "56dp"
-            
         MDTopAppBar:
             id: topbar
             left_action_items: [["arrow-left", lambda x: root.home()],]
@@ -94,19 +113,10 @@
                 [["delete", lambda x: root.del_tree()],
                 ["dots-vertical", lambda x: app.callback()],               
                 ]   
+                
         MDBoxLayout:
-            ScrollView:
-                do_scroll_x: False
-
-                MDBoxLayout:
-                    id: box
-                    orientation: 'vertical'
-                    adaptive_size: True
-                    spacing: "16dp"
-                    pos_hint: {"center_x": .5, "center_y": .5}
-
-                    
-        
+            id: main 
+                   
 <AccountScreen>:
     name: 'account'
     

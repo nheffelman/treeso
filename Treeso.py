@@ -4,6 +4,7 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDFloatingActionButtonSpeedDial
 from kivymd.toast import toast
 import os
+from kivy.uix.scrollview import ScrollView
 from kivymd.uix.screenmanager import ScreenManager
 import pickle
 from kivy.lang import Builder
@@ -17,6 +18,7 @@ from kivy.uix.behaviors import ButtonBehavior, FocusBehavior
 from kivy.uix.recycleview import RecycleView
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivymd.uix.label import MDLabel
+from kivymd.uix.relativelayout import MDRelativeLayout
 from kivy.uix.recycleboxlayout import RecycleBoxLayout
 from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
@@ -25,7 +27,9 @@ from kivy.uix.widget import Widget
 from linkpreview import LinkPreview, Link, LinkGrabber
 from kivymd.uix.fitimage import FitImage
 import random
-
+from kivy.core.window import Window
+from kivy.uix.videoplayer import VideoPlayer
+from kivymd.uix.filemanager import MDFileManager
 
 #pickles the current settings
 def pickle_settings(settings):
@@ -103,6 +107,11 @@ class ItemColor(RecycleDataViewBehavior, MDBoxLayout):
         else:
             print("selection removed for {0}".format(rv.data[index]))
         
+class LinkCard(MDCard):
+    text = StringProperty()
+    source = StringProperty()
+    color = StringProperty()
+
 class ImageCard(MDCard):
     text = StringProperty()
     source = StringProperty()
@@ -127,6 +136,71 @@ class TreeScreen(MDScreen):
     text = StringProperty()
     index = NumericProperty()
     tree = DictProperty()
+    postImage = ListProperty([])
+    postVideo = ListProperty([])
+    mediaType = StringProperty("")
+
+    def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            Window.bind(on_keyboard=self.events)
+            self.manager_open = False
+            self.file_manager = MDFileManager(
+                exit_manager=self.exit_manager,
+                preview= True,
+                select_path=self.select_path
+            )
+    def file_manager_open(self):
+        self.file_manager.show(os.path.expanduser("~"))  # output manager to the screen
+        
+        self.manager_open = True
+
+    def select_path(self, path: str):
+        '''
+        It will be called when you click on the file name
+        or the catalog selection button.
+
+        :param path: path to the selected directory or file;
+        '''
+        if self.mediaType == 'video':
+            self.postVideo.append(path)
+            video = VideoPlayer(source=path, state='pause', options={'allow_stretch': True})
+            video.on_image_overlay_play = 'assets/preview.png'
+            self.ids.previewBox.add_widget(video)
+        if self.mediaType == 'image':
+            self.postImage.append(path)
+            img = FitImage(source=path)
+            self.ids.main.add_widget(img)
+        self.mediaType = ''
+        self.exit_manager()
+        #toast(path)
+        
+
+    def exit_manager(self, *args):
+        '''Called when the user reaches the root of the directory tree.'''
+
+        self.manager_open = False
+        self.file_manager.close()
+
+    def events(self, instance, keyboard, keycode, text, modifiers):
+        '''Called when buttons are pressed on the mobile device.'''
+
+        if keyboard in (1001, 27):
+            if self.manager_open:
+                self.file_manager.back()
+        return True
+    
+    #function to add a video to the post
+    def select_video(self):
+        self.mediaType = "video"
+        self.file_manager.show(os.path.expanduser("~"))
+        self.manager_open = True
+    
+    #function to add an image to the post
+    def select_image(self):
+        self.mediaType = "image"
+        self.file_manager.show(os.path.expanduser("~"))  # output manager to the screen
+        self.manager_open = True
+
     def on_enter(self):
         self.add_widget(MDFloatingActionButtonSpeedDial(
             data={
@@ -136,10 +210,9 @@ class TreeScreen(MDScreen):
                 ],
                 'Link': ['link', 
                           "on_press",lambda x: self.add_link_url(self.tree, add_link=True)],
-                'Video': [
-                    'video', 
-                    "on_press", lambda x: print('video pressed')
-                ],
+                'Image': [
+                    'image', 
+                    "on_press", lambda x: self.add_image(self.tree, add_image=True)],
                 'Tree': [
                     'assets/treeso.jpg',
                     "on_press", lambda x: self.add_tree_pressed()
@@ -157,7 +230,10 @@ class TreeScreen(MDScreen):
             adaptive_height=True,
             spacing="56dp")
         leafIndex=0
-
+        s = ScrollView(do_scroll_x=False)
+        box = MDBoxLayout(id='box', orientation='vertical', adaptive_height=True, spacing='16dp')
+        
+        print(tree)
         for leaf in tree['leaves']:
             
                        
@@ -168,7 +244,7 @@ class TreeScreen(MDScreen):
                 card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.edit_text(tree=tree, text=leaf['text'], leafIndex=leafIndex, add_text=False))
                 leaves.add_widget(card)
             if leaf.get('kind') == 'link':
-                linkcard = ImageCard()
+                linkcard = LinkCard()
                 linkcard.text = leaf['link'][8:26]
                 linkcard.color = bgcolor
                 
@@ -177,21 +253,27 @@ class TreeScreen(MDScreen):
                     
                 linkcard.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.add_link_url(tree=tree, text=leaf['link'], leafIndex=leafIndex, add_link=False))
                 leaves.add_widget(linkcard)
+            if leaf.get('kind') == 'image':
+                card = ImageCard()
+                card.source = leaf['path']
+                card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.add_image(tree=tree, leafIndex=leafIndex, add_image=False))
+                leaves.add_widget(card)
             leafIndex += 1
-        self.ids.box.add_widget(leaves)
+        box.add_widget(leaves)
         widget = Widget()
-        self.ids.box.add_widget(widget)
+        box.add_widget(widget)
+        s.add_widget(box)
+        self.ids.main.add_widget(s)
 
     def edit_text(self, tree, text="", leafIndex=0, add_text=False):
         print('edit text')
         self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit(tree)]]
+        self.ids.main.clear_widgets()
+        textinput = MDTextField(id='textinput',multiline=True, text=text, pos_hint={"center_y": 0.9, "center_x": .5},)
         
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        textinput = MDTextField(id='textinput',multiline=True, halign='center', text=text)
-        self.ids.box.add_widget(textinput)
+        self.ids.main.add_widget(textinput)
         widget = Widget()
-        self.ids.box.add_widget(widget)
+        self.ids.main.add_widget(widget)
         self.ids.topbar.right_action_items = [['delete', lambda x, tree=tree, leafIndex=leafIndex: self.del_leaf(tree, leafIndex) ],
                                               ['check', lambda x, textinput=textinput, tree=tree : self.save_text(tree, textinput, leafIndex, add_text)]]
         
@@ -211,8 +293,7 @@ class TreeScreen(MDScreen):
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
                                               ['dots-vertical']]
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.main.clear_widgets()
         self.load_tree(tree)
 
     def cancel_edit(self, tree):
@@ -221,12 +302,10 @@ class TreeScreen(MDScreen):
                                               ['dots-vertical']]
         namelabel = NameLabel(text=self.text, valign='top', halign='center', 
                               on_press=lambda x: self.edit_text(self.text))
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.main.clear_widgets()
         self.load_tree(tree)
     def home(self):
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.main.clear_widgets()
         self.manager.current = 'home'
 
     def save_text(self, tree, textinput, leafIndex, add_text):
@@ -254,8 +333,7 @@ class TreeScreen(MDScreen):
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
                                               ['dots-vertical']]
         
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.main.clear_widgets()
         self.load_tree(tree)
 
     #function adds more text to the tree
@@ -266,12 +344,12 @@ class TreeScreen(MDScreen):
         print('edit link')
         self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit(tree)]]
         
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        textinput = MDTextField(id='textinput',multiline=True, halign='center', text=text)
-        self.ids.box.add_widget(textinput)
+        self.ids.main.clear_widgets()
+        textinput = MDTextField(id='textinput',multiline=True, text=text, pos_hint={"center_y": 0.9, "center_x": .5},)
+        
+        self.ids.main.add_widget(textinput)
         widget = Widget()
-        self.ids.box.add_widget(widget)
+        self.ids.main.add_widget(widget)
         self.ids.topbar.right_action_items = [['delete', lambda x, tree=tree, leafIndex=leafIndex: self.del_leaf(tree, leafIndex) ],
                                             ['check', lambda x, textinput=textinput, tree=tree : self.save_link(tree, textinput, leafIndex, add_link)]]
 
@@ -326,10 +404,55 @@ class TreeScreen(MDScreen):
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
                                               ['dots-vertical']]
         
-        self.ids.box.remove_widget(self.ids.box.children[0])
-        self.ids.box.remove_widget(self.ids.box.children[0])
+        self.ids.main.clear_widgets()
         self.load_tree(tree)
 
+    def add_image(self, tree, leafIndex=0, add_image=False):
+        print('edit image')
+        self.ids.topbar.left_action_items = [['close', lambda x: self.cancel_edit(tree)]]
+        
+        self.ids.main.clear_widgets()
+        self.ids.topbar.right_action_items = [['delete', lambda x, tree=tree, leafIndex=leafIndex: self.del_leaf(tree, leafIndex) ],
+                                            ['check', lambda x, tree=tree : self.save_image(tree, leafIndex, add_image )]]
+        self.mediaType = "image"
+        self.file_manager.show(os.path.expanduser("~"))  # output manager to the screen
+        self.manager_open = True
+
+    def save_image(self, tree, leafIndex, add_link):
+        trees = unpickle_trees()
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        else: 
+            print('no public key')
+            return
+        treeDict = trees[publicKey]
+        leaf = {}
+        print('self.postImage', self.postImage)
+        if self.postImage == []:
+            self.del_leaf(tree, leafIndex)
+            return
+        leaf['path'] = self.postImage[0]
+        leaf['kind'] = 'image'
+        print("leaf", leaf)
+        if add_link:
+            tree['leaves'].append(leaf)
+        else:
+            tree['leaves'][leafIndex] = leaf
+             
+        treeDict[tree['id']] = dict(tree)
+        trees[publicKey] = treeDict
+        pickle_tree(trees)
+
+            
+        self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
+        self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
+                                              ['dots-vertical']]
+        
+        self.ids.main.clear_widgets()
+        self.load_tree(tree)
+
+  
     def reload(self):
         self.ids.topbar.left_action_items = [['arrow-left', lambda x: self.home()]]
         self.ids.topbar.right_action_items = [['delete', lambda x: self.del_tree()],
