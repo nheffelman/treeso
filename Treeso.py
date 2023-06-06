@@ -218,7 +218,7 @@ class TreeScreen(MDScreen):
                     "on_press", lambda x: self.add_video(self.tree, add_video=True)],
                 'Tree': [
                     'assets/treeso.jpg',
-                    "on_press", lambda x: self.add_tree_pressed()
+                    "on_press", lambda x: self.add_tree_pressed(self.tree, add_tree=True)
                 ]
             },
             root_button_anim=True,
@@ -266,6 +266,12 @@ class TreeScreen(MDScreen):
                 card.source = 'assets/preview.png'
                 card.text = os.path.basename(leaf['path'][48:])
                 card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.add_video(tree=tree, leafIndex=leafIndex, add_video=False))
+                leaves.add_widget(card)
+            if leaf.get('kind') == 'tree':
+                card = self.manager.get_screen('home').get_card(0)
+                print('kind text', leaf['text'] )
+                card.text = leaf['text'][:18]
+                card.bind(on_press = lambda widget , tree=tree, leafIndex=leafIndex, leaf=leaf: self.treecardPressed(tree, leaf, leafIndex))
                 leaves.add_widget(card)
             leafIndex += 1
 
@@ -537,11 +543,51 @@ class TreeScreen(MDScreen):
         treeDict.pop(self.tree['id'])
         trees[publicKey] = treeDict
         pickle_tree(trees)
+        self.ids.main.clear_widgets()
         self.manager.current = 'home'
         
 
-    def add_tree_pressed(self):
-        toast('tree pressed')
+    def add_tree_pressed(self, tree, leafIndex=0, add_tree=True):
+        trees = unpickle_trees()
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        if publicKey in trees:
+            print(trees)
+        new_tree = {}
+        id = random.randint(0, 1000000)
+        if publicKey in trees:
+            treesDict = trees[publicKey]
+        else:
+            treesDict = {}
+            print('no trees')
+        leaves = []
+        leaf = {'kind': 'tree', 'text': 'new tree'}
+        leaves.append(leaf)
+        leaf['leaves'] = leaves
+        leaf['id'] = id
+        leaf['is_root'] = False
+                  
+        treesDict[id] = leaf
+        if add_tree:
+            tree['leaves'].append(leaf)
+        else:
+            tree['leaves'][leafIndex] = leaf
+             
+        treesDict[tree['id']] = dict(tree)
+        
+        trees[publicKey] = treesDict
+
+        pickle_tree(trees)
+        self.ids.main.clear_widgets()
+        self.load_tree(tree)
+
+    def treecardPressed(self, tree, leaf, leafIndex):
+        self.ids.main.clear_widgets()
+        print(leaf)
+        self.load_tree(leaf)
+        
+        
         
         
 class HomeScreen(MDScreen):
@@ -600,6 +646,9 @@ class HomeScreen(MDScreen):
             #self.ids.box.add_widget(lab)
             for id, tree in treeDict.items():
                 print('each tree', tree)
+                if 'is_root' in tree:
+                    if not tree['is_root']:
+                        next
                 card = self.get_card(index)
                 index += 1
                 if index > 2:
