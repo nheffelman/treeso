@@ -1,12 +1,12 @@
 
 
 <MD3Card>
-    padding: 4
     size_hint: None, None
     size: "200dp", "100dp"
+    paddong : 5
 
     MDRelativeLayout:
-
+		id: rel
         MDIconButton:
             icon: "assets/treeso.jpg"
             pos_hint: {"top": .5, "right": 1}
@@ -14,7 +14,8 @@
         MDLabel:
             id: label
             text: root.text
-            adaptive_size: True
+            size_hint_x: .73
+            adaptive_height: True
             pos: "12dp", "12dp"
             bold: True
 
@@ -104,14 +105,14 @@
     
     MDBoxLayout:
         orientation: 'vertical'
-        spacing: "56dp"
+        spacing: "34dp"
         MDTopAppBar:
             id: topbar
             left_action_items: [["arrow-left", lambda x: root.home()],]
             right_action_items:
 
-                [["delete", lambda x: root.del_tree()],
-                ["dots-vertical", lambda x: app.callback()],               
+                [["share", lambda x: print('share pressed')],
+                ["delete", lambda x: root.del_tree(root.tree)],               
                 ]   
                 
         MDBoxLayout:
@@ -147,7 +148,11 @@
                 text: "Theme Color"
                 secondary_text: "Orange"
                 on_press: app.choose_color()
-            
+        MDList:
+            title: "Clear Trees"
+            TwoLineListItem:
+                text: "Clear All Trees"
+                on_press: app.clear_trees()    
         Widget:
 
 <Picker>:
