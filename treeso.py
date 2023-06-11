@@ -1,12 +1,12 @@
 # pylint:disable=E0001
+
+#from kivy and kivymd
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.button import MDFloatingActionButtonSpeedDial
 from kivymd.toast import toast
-import os
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.screenmanager import ScreenManager
-import pickle
 from kivy.lang import Builder
 from kivymd.uix.card import MDCard
 from kivy.factory import Factory
@@ -15,7 +15,6 @@ from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.color_definitions import colors
 from kivymd.uix.tab import MDTabsBase
 from kivy.uix.behaviors import ButtonBehavior, FocusBehavior
-from kivy.uix.recycleview import RecycleView
 from kivy.uix.recycleview.views import RecycleDataViewBehavior
 from kivymd.uix.label import MDLabel
 from kivymd.uix.relativelayout import MDRelativeLayout
@@ -24,12 +23,18 @@ from kivy.uix.behaviors import FocusBehavior
 from kivy.uix.recycleview.layout import LayoutSelectionBehavior
 from kivymd.uix.textfield import MDTextField
 from kivy.uix.widget import Widget
-from linkpreview import LinkPreview, Link, LinkGrabber
 from kivymd.uix.fitimage import FitImage
-import random
 from kivy.core.window import Window
 from kivy.uix.videoplayer import VideoPlayer
 from kivymd.uix.filemanager import MDFileManager
+
+#from python
+import random
+import pickle
+import os
+
+#other libraries
+from linkpreview import LinkPreview, Link, LinkGrabber
 
 # pickles the current settings
 
@@ -71,8 +76,10 @@ def unpickle_trees():
 
 def get_color():
     settings = unpickle_settings()
-    if 'primary_palette' in settings:
-        palette = settings['primary_palette']
+    if 'publicKey' in settings:
+        publicKey = settings['publicKey']
+        if 'primary_palette' in settings[publicKey]:
+            palette = settings[publicKey]['primary_palette']
     else:
         palette = "Orange"
     return palette
@@ -142,9 +149,16 @@ class SelectableRecycleBoxLayout(FocusBehavior, LayoutSelectionBehavior,
 
 
 class AccountScreen(MDScreen):
-    pass
+    palette = StringProperty()
 
-
+    def on_enter(self):
+        settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        if publicKey in settings:
+            if 'primary_palette' in settings[publicKey]:
+                self.palette = settings[publicKey]['primary_palette']
+        
 class TreeScreen(MDScreen):
     text = StringProperty()
     index = NumericProperty()
@@ -474,7 +488,7 @@ class TreeScreen(MDScreen):
         else:
             leaf['title'] = textinput.text
             toast('no preview available')
-            
+
         if add_link:
             tree['leaves'].append(leaf)
         else:
@@ -720,13 +734,19 @@ class HomeScreen(MDScreen):
     
     def get_card(self, index):
         settings = unpickle_settings()
-        if 'primary_palette' in settings:
-            palette = settings['primary_palette']
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+        if publicKey in settings:
+            if 'primary_palette' in settings[publicKey]:
+                palette = settings[publicKey]['primary_palette']
+            else:
+                palette = "Orange"
+            if 'primary_hue' in settings[publicKey]:
+                hue = settings[publicKey]['primary_hue']
+            else:
+                hue = "500"
         else:
             palette = "Orange"
-        if 'primary_hue' in settings:
-            hue = settings['primary_hue']
-        else:
             hue = "500"
         style_list = ["elevated", "filled", "outlined"]
         styles = {
@@ -823,10 +843,18 @@ class Picker(MDScreen):
         app.theme_cls.primary_hue = hue
         # app.theme_cls.primary_dark_hue = hue
         settings = unpickle_settings()
-        settings['primary_palette'] = palette
-        settings['primary_hue'] = hue
-        print('hue', hue)
-        pickle_settings(settings)
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+            if publicKey in settings:
+                settings[publicKey]['primary_palette'] = palette
+                settings[publicKey]['primary_hue'] = hue
+                print('hue', hue)
+                pickle_settings(settings)
+            else:
+                settings[publicKey] = {}
+                settings[publicKey]['primary_palette'] = palette
+                settings[publicKey]['primary_hue'] = hue
+                pickle_settings(settings)
 
     def on_switch_active(self, switch, value):
         settings = unpickle_settings()
@@ -835,35 +863,53 @@ class Picker(MDScreen):
             app = MDApp.get_running_app()
             app.theme_cls.theme_style = "Dark"
             self.theme_style = "Dark"
-            settings['theme_style'] = "Dark"
+            if 'publicKey' in settings:
+                publicKey = settings['publicKey']
+                if publicKey in settings:
+                    settings[publicKey]['theme_style'] = "Dark"
+                else:
+                    settings[publicKey] = {}
+                    settings[publicKey]['theme_style'] = "Dark"
+                pickle_settings(settings)
+                            
         else:
             app = MDApp.get_running_app()
             app.theme_cls.theme_style = "Light"
             self.theme_style = "Light"
-            settings['theme_style'] = "Light"
+            if 'publicKey' in settings:
+                publicKey = settings['publicKey']
+                if publicKey in settings:
+                    settings[publicKey]['theme_style'] = "Light"
+                else:
+                    settings[publicKey] = {}
+                    settings[publicKey]['theme_style'] = "Light"
+                pickle_settings(settings)
+            
             print('The checkbox', switch, 'is inactive')
 
-        pickle_settings(settings)
-
+        
     def on_enter(self):
         Factory.register(self, cls=self)
 
         # get user color settings
         settings = unpickle_settings()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+            if publicKey not in settings:
+                settings[publicKey] = {}
 
-        if 'primary_palette' in settings:
-            self.primary_palette = settings['primary_palette']
-        else:
-            primary_palette = "Orange"
-        if 'theme_style' in settings:
-            self.theme_style = settings['theme_style']
-
-        else:
-            self.theme_style = "Dark"
-        if 'primary_hue' in settings:
-            self.primary_hue = settings['primary_hue']
-        else:
-            self.primary_hue = "500"
+            if 'primary_palette' in settings[publicKey]:
+                self.primary_palette = settings[publicKey]['primary_palette']
+            else:
+                self.primary_palette = "Orange"
+            if 'primary_hue' in settings[publicKey]:
+                self.primary_hue = settings[publicKey]['primary_hue']
+            else:
+                self.primary_hue = "500"
+            if 'theme_style' in settings[publicKey]:
+                self.theme_style = settings[publicKey]['theme_style']
+            else:
+                self.theme_style = "Dark"
 
         for name_tab in colors.keys():
             tab = Tab(title=name_tab)
@@ -904,24 +950,27 @@ class Treeso(MDApp):
         sm.add_widget(Picker(name='picker'))
 
         settings = unpickle_settings()
-        # settings['primary_palette'] = "Orange"
+        
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+            if publicKey not in settings:
+                settings[publicKey] = {}
+            # get user color settings
+            if 'primary_palette' in settings[publicKey]:
+                self.theme_cls.primary_palette = settings[publicKey]['primary_palette']
+            else:
+                self.theme_cls.primary_palette = "Orange"
+            if 'primary_hue' in settings[publicKey]:
+                print('adding hue', settings[publicKey]['primary_hue'])
+                self.theme_cls.primary_light_hue = settings[publicKey]['primary_hue']
+                self.theme_cls.primary_dark_hue = settings[publicKey]['primary_hue']
+            else:
+                self.theme_cls.primary_hue = "500"
 
-        # get user color settings
-        if 'primary_palette' in settings:
-            self.theme_cls.primary_palette = settings['primary_palette']
-        else:
-            self.theme_cls.primary_palette = "Orange"
-        if 'primary_hue' in settings:
-            print('adding hue', settings['primary_hue'])
-            self.theme_cls.primary_light_hue = settings['primary_hue']
-            self.theme_cls.primary_dark_hue = settings['primary_hue']
-        else:
-            self.theme_cls.primary_hue = "500"
-
-        if 'theme_style' in settings:
-            self.theme_cls.theme_style = settings['theme_style']
-        else:
-            self.theme_cls.theme_style = "Dark"
+            if 'theme_style' in settings[publicKey]:
+                self.theme_cls.theme_style = settings[publicKey]['theme_style']
+            else:
+                self.theme_cls.theme_style = "Dark"
 
         return sm
 
@@ -935,7 +984,12 @@ class Treeso(MDApp):
         self.root.current = 'picker'
 
     def clear_trees(self):
-        trees = {}
-        pickle_tree(trees)
+        settings = unpickle_settings()
+        trees = unpickle_trees()
+        if 'publicKey' in settings:
+            publicKey = settings['publicKey']
+            trees[publicKey] = {}
+            pickle_tree(trees)
+            
     
 Treeso().run()
