@@ -627,8 +627,7 @@ class TreeScreen(MDScreen):
         print('branches to remove', branches_to_remove)
         #remove branches from treeDict
         for branch_id in branches_to_remove:
-            treeDict.pop(branch_id)
-        
+            treeDict.pop(branch_id)     
 
 
         
