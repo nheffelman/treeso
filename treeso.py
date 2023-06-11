@@ -450,22 +450,31 @@ class TreeScreen(MDScreen):
             receive_timeout=10,
             chunk_size=1024,
         )
-        content, url = grabber.get_content(url)
-        link = Link(url, content)
-
-        try:
-            preview = LinkPreview(link)
+        try: 
+            content, url = grabber.get_content(url)
+            link = Link(url, content)
         except:
-            preview = None
-        if preview:
+            link = None
 
+        # if link is good try to get preview
+        preview = None
+        if link:            
+            try:
+                preview = LinkPreview(link)
+            except:
+                preview = None
+
+        if preview:
             if preview.image:
                 leaf['image_url'] = preview.image
             if preview.title:
                 leaf['title'] = preview.title
             if preview.description:
                 leaf['description'] = preview.description[128:]
-
+        else:
+            leaf['title'] = textinput.text
+            toast('no preview available')
+            
         if add_link:
             tree['leaves'].append(leaf)
         else:
